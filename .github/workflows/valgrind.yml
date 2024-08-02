@@ -35,6 +35,7 @@ jobs:
       - name: Disable CPU related performance counters 
         if: runner.os == 'Linux'
         run: | 
+          sudo modprobe cpufreq_performance
           sudo cpupower frequency-set --governor performance
           sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
       
