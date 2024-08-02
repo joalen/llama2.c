@@ -31,7 +31,17 @@ jobs:
       - name: Disable Address Space Randomization
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.randomize_va_space=0
-        
+
+      - name: Disable CPU related performance counters 
+        if: runner.os == 'Linux'
+        run: | 
+          sudo cpupower frequency-set --governor performance
+          sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+      
+      - name: Disable swapping 
+        if: runner.os == 'Linux' 
+        run: sudo swapoff -a
+
       - name: Run Valgrind
         run: |
           #!/bin/bash
@@ -53,8 +63,22 @@ jobs:
             local valgrind_options="--read-inline-info=yes --trace-children=yes -v -v"
             if [ "$tool" == "memcheck" ]; then
               valgrind_options+=" --leak-check=full --show-leak-kinds=all --track-origins=yes"
+            elif [ "$tool" == "cachegrind" ]; then
+              valgrind_options+="--cachegrind-out-file="./valgrind_reports/$(basename "$file")-${tool_name}_cachegrind_report.txt" --cache-sim=yes --branch-sim=yes"
+            elif [ "$tool" == "callgrind" ]; then
+              valgrind_options+="--dump-instr=yes --collect-jumps=yes --callgrind-out-file="./valgrind_reports/$(basename "$file")-${tool_name}_callgrind_report.txt" callgrind_annotate --show-percs=yes --inclusive=yes --tree=both {output_file}"
+            elif [ "$tool" == "massif" ]; then
+              valgrind_options+="--massif-out-file="./valgrind_reports/$(basename "$file")-${tool_name}_massif_report.txt""
+            elif [ "$tool" == "dhat" ]; then
+              valgrind_options+="--dhat-out-file="./valgrind_reports/$(basename "$file")-${tool_name}_massif_report.txt""
+            elif [ "$tool" == "bbv" ]; then
+              valgrind_options+="--bb-out-file="./valgrind_reports/$(basename "$file")-${tool_name}_massif_report.txt""
+            elif [ "$tool" == "lackey" ]; then
+              valgrind_options+="--trace-mem=yes --trace-superblocks=yes"
+            elif [ "$tool" == "drd" ]; then
+              valgrind_options+="--check-stack-var=yes --trace-barrier=yes --trace-cond=yes --trace-fork-join=yes --trace-mutex=yes --trace-rwlock=yes --trace-semaphore=yes"
             fi
-            timeout 60s valgrind --tool="$tool" $valgrind_options --log-file="./valgrind_reports/$(basename "$file")-${tool_name}_valgrind_report.txt" "$executable" model.bin -n 256 -i "Once upon a time"
+            timeout 60s valgrind --tool="$tool" $valgrind_options --log-file="./valgrind_reports/$(basename "$file")-${tool_name}_valgrind_report.txt" --fair-sched=try --read-var-info=yes --track-origins=yes "$executable" stories15M.bin -n 256 -i "Once upon a time"
             local exit_status=$?
             if [ $exit_status -eq 124 ]; then
               return
