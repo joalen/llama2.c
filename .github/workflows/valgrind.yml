@@ -75,7 +75,7 @@ jobs:
               valgrind_options+=" --check-stack-var=yes --trace-barrier=yes --trace-cond=yes --trace-fork-join=yes --trace-mutex=yes --trace-rwlock=yes --trace-semaphore=yes"
             fi
 
-            timeout 60s valgrind --tool="$tool" $valgrind_options --log-file=./valgrind_reports/$(basename "$executable")-${tool_name}_valgrind_report.txt --fair-sched=try --read-var-info=yes --track-origins=yes "$executable" stories15M.bin -n 256 -i "Once upon a time"
+            timeout 60s valgrind --tool="$tool" $valgrind_options --log-file=./valgrind_reports/$(basename "$executable")-${tool_name}_valgrind_report.txt --fair-sched=try --read-var-info=yes "$executable" stories15M.bin -n 256 -i "Once upon a time"
             local exit_status=$?
             if [ $exit_status -eq 124 ]; then
               return
